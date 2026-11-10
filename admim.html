@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NooxSub - Painel Administrativo</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkbg: '#09090b',
+                        cardbg: '#121215',
+                        primary: '#b91c1c',
+                        primaryHover: '#991b1b',
+                        accent: '#dc2626'
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+</head>
+<body class="bg-darkbg text-gray-100 min-h-screen flex flex-col font-sans">
+
+    <!-- Header -->
+    <header class="w-full py-4 px-6 border-b border-gray-800 bg-cardbg/80 backdrop-blur sticky top-0 z-50 flex justify-between items-center">
+        <div class="flex items-center space-x-3">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-red-900 flex items-center justify-center shadow-lg shadow-red-900/30">
+                <i class="fa-solid fa-shield-halved text-white text-sm"></i>
+            </div>
+            <span class="text-xl font-bold tracking-wide text-white">Noox<span class="text-primary">Sub</span> <span class="text-xs bg-red-900/40 text-red-400 px-2 py-0.5 rounded ml-2 border border-red-800/50">Admin</span></span>
+        </div>
+        <a href="user.html" class="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-xs text-gray-300 font-semibold transition">
+            <i class="fa-solid fa-arrow-left mr-1"></i> Painel do Usuário
+        </a>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-6xl w-full mx-auto p-4 sm:p-6 space-y-6">
+
+        <!-- Estatísticas Gerais -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="bg-cardbg border border-gray-800 rounded-2xl p-5 shadow-xl flex items-center space-x-4">
+                <div class="w-12 h-12 rounded-xl bg-primary/20 text-primary flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-link"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-400 font-semibold">Total de Links</p>
+                    <h3 id="totalLinks" class="text-2xl font-bold text-white">0</h3>
+                </div>
+            </div>
+
+            <div class="bg-cardbg border border-gray-800 rounded-2xl p-5 shadow-xl flex items-center space-x-4">
+                <div class="w-12 h-12 rounded-xl bg-red-900/20 text-red-400 flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-eye"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-400 font-semibold">Total de Visitas</p>
+                    <h3 id="totalVisits" class="text-2xl font-bold text-white">0</h3>
+                </div>
+            </div>
+
+            <div class="bg-cardbg border border-gray-800 rounded-2xl p-5 shadow-xl flex items-center space-x-4">
+                <div class="w-12 h-12 rounded-xl bg-emerald-900/20 text-emerald-400 flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-download"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-400 font-semibold">Total de Downloads</p>
+                    <h3 id="totalDownloads" class="text-2xl font-bold text-white">0</h3>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabela de Gerenciamento de Todos os Links -->
+        <div class="bg-cardbg border border-gray-800 rounded-2xl p-6 shadow-xl space-y-4">
+            <h2 class="text-lg font-bold text-white flex items-center">
+                <i class="fa-solid fa-database text-primary mr-2"></i> Todos os Links Cadastrados no Sistema
+            </h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm text-gray-300">
+                    <thead class="bg-darkbg text-xs text-gray-400 uppercase border-b border-gray-800">
+                        <tr>
+                            <th class="p-3">Título</th>
+                            <th class="p-3">ID do Dono</th>
+                            <th class="p-3">Visitas</th>
+                            <th class="p-3">Downloads</th>
+                            <th class="p-3 text-right">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminLinksTable">
+                        <tr>
+                            <td colspan="5" class="p-4 text-center text-gray-500">Carregando dados do banco...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Script Admin & Firebase -->
+    <script>
+        const firebaseConfig = {
+            databaseURL: "https://nooxsub-default-rtdb.firebaseio.com/"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        const totalLinksEl = document.getElementById('totalLinks');
+        const totalVisitsEl = document.getElementById('totalVisits');
+        const totalDownloadsEl = document.getElementById('totalDownloads');
+        const adminLinksTable = document.getElementById('adminLinksTable');
+
+        // Monitorar todos os links do banco
+        db.ref('links').on('value', snapshot => {
+            const data = snapshot.val();
+            if (!data) {
+                totalLinksEl.textContent = '0';
+                totalVisitsEl.textContent = '0';
+                totalDownloadsEl.textContent = '0';
+                adminLinksTable.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-500">Nenhum link encontrado.</td></tr>';
+                return;
+            }
+
+            let linkCount = 0;
+            let sumVisits = 0;
+            let sumDownloads = 0;
+            adminLinksTable.innerHTML = '';
+
+            Object.keys(data).forEach(id => {
+                const link = data[id];
+                linkCount++;
+                const v = link.stats?.visits || 0;
+                const d = link.stats?.downloads || 0;
+                sumVisits += v;
+                sumDownloads += d;
+
+                const tr = document.createElement('tr');
+                tr.className = 'border-b border-gray-800/60 hover:bg-darkbg/40';
+                tr.innerHTML = `
+                    <td class="p-3 font-semibold text-white truncate max-w-xs">${link.title}</td>
+                    <td class="p-3 text-xs font-mono text-gray-500">${link.owner ? link.owner.substring(0, 10) + '...' : 'Anônimo'}</td>
+                    <td class="p-3"><span class="px-2 py-0.5 rounded bg-red-900/20 text-red-400 text-xs">${v}</span></td>
+                    <td class="p-3"><span class="px-2 py-0.5 rounded bg-emerald-900/20 text-emerald-400 text-xs">${d}</span></td>
+                    <td class="p-3 text-right">
+                        <button onclick="adminDeleteLink('${id}')" class="px-2.5 py-1 rounded bg-red-900/40 hover:bg-red-900 text-red-300 text-xs font-bold transition">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                adminLinksTable.appendChild(tr);
+            });
+
+            totalLinksEl.textContent = linkCount;
+            totalVisitsEl.textContent = sumVisits;
+            totalDownloadsEl.textContent = sumDownloads;
+        });
+
+        window.adminDeleteLink = function(id) {
+            if (confirm('Tem certeza que deseja apagar este link do sistema?')) {
+                db.ref(`links/${id}`).remove();
+            }
+        };
+    </script>
+</body>
+</html>
