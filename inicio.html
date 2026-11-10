@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NooxSub - Verificação de Acesso</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkbg: '#09090b',
+                        cardbg: '#121215',
+                        primary: '#b91c1c', // Vermelho escuro elegante
+                        primaryHover: '#991b1b',
+                        accent: '#dc2626'
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome para Ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+</head>
+<body class="bg-darkbg text-gray-100 min-h-screen flex flex-col justify-between font-sans selection:bg-primary selection:text-white">
+
+    <!-- Header / Navbar -->
+    <header class="w-full py-4 px-6 border-b border-gray-800/60 bg-cardbg/80 backdrop-blur sticky top-0 z-50 flex justify-between items-center">
+        <div class="flex items-center space-x-3">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-red-900 flex items-center justify-center shadow-lg shadow-red-900/30">
+                <i class="fa-solid fa-lock-open text-white text-sm"></i>
+            </div>
+            <span class="text-xl font-bold tracking-wide text-white">Noox<span class="text-primary">Sub</span></span>
+        </div>
+        <div class="flex items-center space-x-4 text-sm text-gray-400">
+            <span><i class="fa-solid fa-eye text-primary mr-1"></i> Visitas: <strong id="visitCount" class="text-white">0</strong></span>
+        </div>
+    </header>
+
+    <!-- Conteúdo Principal -->
+    <main class="flex-grow flex items-center justify-center p-4 sm:p-6">
+        <div class="w-full max-w-md bg-cardbg border border-gray-800/80 rounded-2xl shadow-2xl p-6 sm:p-8 space-y-6 relative overflow-hidden">
+            <!-- Glow Effect Vermelho -->
+            <div class="absolute -top-24 -right-24 w-48 h-48 bg-primary/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            <!-- Perfil / Cabeçalho do Link -->
+            <div class="text-center space-y-3">
+                <div class="relative inline-block">
+                    <img id="userAvatar" src="https://via.placeholder.com/150" alt="Avatar" class="w-24 h-24 rounded-full object-cover border-2 border-primary shadow-lg shadow-red-900/20 mx-auto">
+                    <span class="absolute bottom-0 right-0 bg-primary text-white text-xs px-2 py-0.5 rounded-full font-bold shadow">PRO</span>
+                </div>
+                <h1 id="linkTitle" class="text-xl font-bold text-white">Carregando Conteúdo...</h1>
+                <p id="linkDesc" class="text-sm text-gray-400">Complete as etapas abaixo para desbloquear seu arquivo ou link.</p>
+            </div>
+
+            <!-- Lista de Etapas (Tarefas) -->
+            <div id="stepsContainer" class="space-y-3">
+                <!-- As etapas serão injetadas via JS -->
+            </div>
+
+            <!-- Botão de Download / Destino Final (Bloqueado inicialmente) -->
+            <div class="pt-2">
+                <button id="finalBtn" disabled class="w-full py-3.5 px-4 rounded-xl font-bold text-white bg-gray-800 text-gray-500 cursor-not-allowed transition-all duration-300 flex items-center justify-center space-x-2 shadow-inner">
+                    <i class="fa-solid fa-lock"></i>
+                    <span>Complete as etapas para liberar</span>
+                </button>
+            </div>
+
+            <!-- Contador de Downloads -->
+            <div class="text-center text-xs text-gray-500 pt-2 border-t border-gray-800/60">
+                <i class="fa-solid fa-download text-primary mr-1"></i> <span id="downloadCount">0</span> pessoas já baixaram este arquivo
+            </div>
+        </div>
+    </main>
+
+    <!-- Rodapé / Logo com Chamada "Crie seu link" -->
+    <footer class="w-full py-6 border-t border-gray-800 bg-cardbg/40 text-center space-y-2">
+        <div class="flex items-center justify-center space-x-2">
+            <div class="w-6 h-6 rounded-lg bg-primary flex items-center justify-center text-white text-xs">
+                <i class="fa-solid fa-bolt"></i>
+            </div>
+            <span class="font-bold text-white text-sm">NooxSub</span>
+        </div>
+        <p class="text-xs text-gray-400">Quer criar links de sub-unlock personalizados como este?</p>
+        <div>
+            <a href="user.html" class="inline-block mt-1 text-xs font-semibold px-4 py-2 rounded-lg bg-primary hover:bg-primaryHover text-white transition shadow-lg shadow-red-900/20">
+                <i class="fa-solid fa-plus-circle mr-1"></i> Crie seu link agora
+            </a>
+        </div>
+    </footer>
+
+    <!-- Script de Integração Firebase & Lógica de Etapas -->
+    <script>
+        // Configuração Firebase
+        const firebaseConfig = {
+            databaseURL: "https://nooxsub-default-rtdb.firebaseio.com/"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // Obter ID do link da URL (ex: inicio.html?id=abc123xyz)
+        const urlParams = new URLSearchParams(window.location.search);
+        const linkId = urlParams.get('id') || 'demo';
+
+        const visitCountEl = document.getElementById('visitCount');
+        const downloadCountEl = document.getElementById('downloadCount');
+        const linkTitleEl = document.getElementById('linkTitle');
+        const linkDescEl = document.getElementById('linkDesc');
+        const userAvatarEl = document.getElementById('userAvatar');
+        const stepsContainer = document.getElementById('stepsContainer');
+        const finalBtn = document.getElementById('finalBtn');
+
+        let linkData = null;
+        let completedSteps = 0;
+        let totalSteps = 0;
+
+        // Registrar Visita em Tempo Real
+        const visitRef = db.ref(`links/${linkId}/stats/visits`);
+        visitRef.transaction(current => (current || 0) + 1);
+        visitRef.on('value', snapshot => {
+            visitCountEl.textContent = snapshot.val() || 1;
+        });
+
+        // Registrar Downloads
+        const downloadRef = db.ref(`links/${linkId}/stats/downloads`);
+        downloadRef.on('value', snapshot => {
+            downloadCountEl.textContent = snapshot.val() || 0;
+        });
+
+        // Carregar dados do Link do Firebase
+        db.ref(`links/${linkId}`).once('value').then(snapshot => {
+            linkData = snapshot.val();
+            if (!linkData) {
+                linkTitleEl.textContent = "Link não encontrado";
+                linkDescEl.textContent = "Este link pode ter expirado ou foi removido pelo criador.";
+                stepsContainer.innerHTML = '';
+                return;
+            }
+
+            linkTitleEl.textContent = linkData.title || "Arquivo Exclusivo";
+            linkDescEl.textContent = linkData.description || "Complete as etapas abaixo para liberar o acesso.";
+            if (linkData.avatar) userAvatarEl.src = linkData.avatar;
+
+            // Renderizar Etapas configuradas
+            renderSteps(linkData.steps || [
+                { type: 'youtube', label: 'Inscrever-se no canal', url: 'https://youtube.com' },
+                { type: 'discord', label: 'Entrar no servidor Discord', url: 'https://discord.gg' },
+                { type: 'telegram', label: 'Entrar no canal Telegram', url: 'https://t.me' }
+            ]);
+        }).catch(err => {
+            console.error("Erro ao carregar link:", err);
+            linkTitleEl.textContent = "Erro de Conexão";
+        });
+
+        function renderSteps(steps) {
+            totalSteps = steps.length;
+            stepsContainer.innerHTML = '';
+
+            steps.forEach((step, index) => {
+                let icon = 'fa-link';
+                if (step.type === 'youtube') icon = 'fa-brands fa-youtube text-red-500';
+                if (step.type === 'discord') icon = 'fa-brands fa-discord text-indigo-400';
+                if (step.type === 'telegram') icon = 'fa-brands fa-telegram text-sky-400';
+                if (step.type === 'whatsapp') icon = 'fa-brands fa-whatsapp text-emerald-500';
+                if (step.type === 'instagram' || step.type === 'x' || step.type === 'facebook') icon = `fa-brands fa-${step.type}`;
+
+                const stepCard = document.createElement('div');
+                stepCard.className = `p-3.5 rounded-xl border border-gray-800 bg-darkbg/60 flex items-center justify-between transition-all duration-300 step-item`;
+                stepCard.innerHTML = `
+                    <div class="flex items-center space-x-3 overflow-hidden">
+                        <div class="w-10 h-10 rounded-lg bg-gray-800 flex items-center justify-center flex-shrink-0 text-lg">
+                            <i class="${icon}"></i>
+                        </div>
+                        <div class="truncate">
+                            <p class="text-xs text-gray-400">Etapa ${index + 1}</p>
+                            <p class="text-sm font-semibold text-white truncate">${step.label}</p>
+                        </div>
+                    </div>
+                    <button onclick="completeStep(${index}, '${step.url}', this)" class="px-4 py-2 rounded-lg text-xs font-bold bg-primary hover:bg-primaryHover text-white transition flex-shrink-0 shadow-md shadow-red-900/20">
+                        Realizar
+                    </button>
+                `;
+                stepsContainer.appendChild(stepCard);
+            });
+        }
+
+        window.completeStep = function(index, targetUrl, btnElement) {
+            // Abrir link da etapa em nova aba
+            window.open(targetUrl, '_blank');
+
+            // Simular verificação com timer de 3 segundos
+            btnElement.disabled = true;
+            btnElement.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Verificando...';
+
+            setTimeout(() => {
+                btnElement.innerHTML = '<i class="fa-solid fa-check"></i> Concluído';
+                btnElement.className = 'px-4 py-2 rounded-lg text-xs font-bold bg-emerald-600 text-white flex-shrink-0 cursor-default';
+                
+                // Marcar como concluído se ainda não foi
+                if (!btnElement.dataset.completed) {
+                    btnElement.dataset.completed = "true";
+                    completedSteps++;
+                    checkAllCompleted();
+                }
+            }, 3000);
+        };
+
+        function checkAllCompleted() {
+            if (completedSteps >= totalSteps) {
+                finalBtn.disabled = false;
+                finalBtn.className = 'w-full py-3.5 px-4 rounded-xl font-bold text-white bg-primary hover:bg-primaryHover transition-all duration-300 flex items-center justify-center space-x-2 shadow-lg shadow-red-900/40 cursor-pointer animate-pulse';
+                finalBtn.innerHTML = '<i class="fa-solid fa-unlock text-lg"></i><span>Liberar Link & Baixar Agora</span>';
+                
+                finalBtn.onclick = () => {
+                    downloadRef.transaction(current => (current || 0) + 1);
+                    window.location.href = linkData.targetUrl || 'https://github.com';
+                };
+            }
+        }
+    </script>
+</body>
+</html>
