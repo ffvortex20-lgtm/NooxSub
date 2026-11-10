@@ -28,7 +28,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 </head>
-<body class="bg-darkbg text-gray-100 min-h-screen flex flex-col font-sans">
+<body class="bg-darkbg text-gray-100 min-h-screen flex flex-col font-sans selection:bg-primary selection:text-white">
 
     <!-- Header -->
     <header class="w-full py-4 px-6 border-b border-gray-800 bg-cardbg/80 backdrop-blur sticky top-0 z-50 flex justify-between items-center">
@@ -38,22 +38,43 @@
             </div>
             <span class="text-xl font-bold tracking-wide text-white">Noox<span class="text-primary">Sub</span> <span class="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded ml-2">Painel</span></span>
         </div>
-        <div class="flex items-center space-x-3">
-            <span id="userEmail" class="text-xs text-gray-400 hidden sm:inline">Conectado</span>
+        <div id="userHeaderInfo" class="hidden flex items-center space-x-3">
+            <span id="userEmail" class="text-xs text-gray-400 hidden sm:inline"></span>
             <button onclick="logout()" class="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-xs text-red-400 font-semibold transition">
                 <i class="fa-solid fa-right-from-bracket mr-1"></i> Sair
             </button>
         </div>
     </header>
 
-    <!-- Main Content -->
-    <main class="flex-grow max-w-5xl w-full mx-auto p-4 sm:p-6 space-y-6">
+    <!-- Tela de Login (Exibida se não estiver autenticado) -->
+    <div id="loginCard" class="flex-grow flex items-center justify-center p-4">
+        <div class="w-full max-w-md bg-cardbg border border-gray-800 rounded-2xl shadow-2xl p-8 text-center space-y-6 relative overflow-hidden">
+            <div class="absolute -top-24 -right-24 w-48 h-48 bg-primary/10 rounded-full blur-3xl pointer-events-none"></div>
+            
+            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-red-900 flex items-center justify-center shadow-xl shadow-red-900/30 mx-auto text-2xl text-white">
+                <i class="fa-solid fa-lock"></i>
+            </div>
+
+            <div class="space-y-2">
+                <h1 class="text-2xl font-bold text-white">Acesse sua Conta</h1>
+                <p class="text-sm text-gray-400">Faça login com o Google para criar e gerenciar seus links de sub-unlock privadamente.</p>
+            </div>
+
+            <button onclick="loginWithGoogle()" class="w-full py-3.5 px-4 rounded-xl font-bold text-white bg-white text-gray-900 hover:bg-gray-100 transition duration-300 flex items-center justify-center space-x-3 shadow-lg">
+                <i class="fa-brands fa-google text-red-600 text-lg"></i>
+                <span>Continuar com o Google</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Painel Principal (Exibido após login) -->
+    <main id="dashboardContent" class="hidden flex-grow max-w-5xl w-full mx-auto p-4 sm:p-6 space-y-6">
         
-        <!-- Alerta / Boas-vindas -->
+        <!-- Boas-vindas -->
         <div class="bg-cardbg border border-gray-800 rounded-2xl p-6 shadow-xl relative overflow-hidden flex flex-col sm:flex-row justify-between items-center gap-4">
             <div class="space-y-1">
                 <h1 class="text-xl font-bold text-white">Gerenciador de Links & Campanhas</h1>
-                <p class="text-sm text-gray-400">Crie links de sub-unlock profissionais e impulsione suas redes sociais.</p>
+                <p class="text-sm text-gray-400">Seus links são salvos de forma privada e segura vinculados ao seu perfil.</p>
             </div>
             <button onclick="openCreateModal()" class="px-5 py-3 rounded-xl bg-primary hover:bg-primaryHover text-white font-bold text-sm transition shadow-lg shadow-red-900/30 flex items-center space-x-2">
                 <i class="fa-solid fa-plus"></i>
@@ -61,13 +82,12 @@
             </button>
         </div>
 
-        <!-- Lista de Links do Usuário -->
+        <!-- Lista de Links Privados do Usuário -->
         <div class="bg-cardbg border border-gray-800 rounded-2xl p-6 shadow-xl space-y-4">
             <h2 class="text-lg font-bold text-white flex items-center">
-                <i class="fa-solid fa-link text-primary mr-2"></i> Seus Links Criados
+                <i class="fa-solid fa-link text-primary mr-2"></i> Seus Links Privados
             </h2>
             <div id="linksList" class="space-y-3">
-                <!-- Links injetados via JS -->
                 <p class="text-sm text-gray-500 text-center py-8">Carregando seus links...</p>
             </div>
         </div>
@@ -85,21 +105,21 @@
             <form id="createLinkForm" class="space-y-4">
                 <div>
                     <label class="block text-xs font-semibold text-gray-400 mb-1">Título do Conteúdo / Arquivo</label>
-                    <input type="text" id="linkTitleInput" required placeholder="Ex: Pack de Modificações Free Fire v3" class="w-full bg-darkbg border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-primary">
+                    <input type="text" id="linkTitleInput" required placeholder="Ex: Pack Exclusivo v3" class="w-full bg-darkbg border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-primary">
                 </div>
 
                 <div>
                     <label class="block text-xs font-semibold text-gray-400 mb-1">Descrição</label>
-                    <input type="text" id="linkDescInput" placeholder="Ex: Siga as etapas abaixo para liberar o link direto." class="w-full bg-darkbg border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-primary">
+                    <input type="text" id="linkDescInput" placeholder="Ex: Siga as etapas abaixo para liberar o link." class="w-full bg-darkbg border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-primary">
                 </div>
 
                 <div>
-                    <label class="block text-xs font-semibold text-gray-400 mb-1">URL de Destino Final (Download / Arquivo)</label>
+                    <label class="block text-xs font-semibold text-gray-400 mb-1">URL de Destino Final (Download)</label>
                     <input type="url" id="linkTargetInput" required placeholder="Ex: https://www.mediafire.com/file/..." class="w-full bg-darkbg border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-primary">
                 </div>
 
                 <div>
-                    <label class="block text-xs font-semibold text-gray-400 mb-1">Foto de Perfil / Capa (URL da Imagem ou Selecione)</label>
+                    <label class="block text-xs font-semibold text-gray-400 mb-1">Foto de Perfil / Capa</label>
                     <div class="flex gap-2">
                         <input type="url" id="linkAvatarInput" placeholder="https://exemplo.com/foto.png" class="flex-grow bg-darkbg border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-primary">
                         <input type="file" id="avatarFile" accept="image/*" class="hidden" onchange="handleImageUpload(event)">
@@ -116,7 +136,6 @@
                         <button type="button" onclick="addStepField()" class="text-xs text-primary font-bold hover:underline">+ Adicionar Etapa</button>
                     </div>
                     <div id="stepsInputsContainer" class="space-y-2">
-                        <!-- Etapa Padrão 1 (YouTube) -->
                         <div class="flex gap-2 step-row">
                             <select class="bg-darkbg border border-gray-800 rounded-xl px-2 py-2 text-xs text-white step-type">
                                 <option value="youtube">YouTube</option>
@@ -126,8 +145,8 @@
                                 <option value="instagram">Instagram</option>
                                 <option value="x">X (Twitter)</option>
                             </select>
-                            <input type="text" placeholder="Nome da tarefa (Inscreva-se)" value="Inscreva-se no Canal" class="flex-grow bg-darkbg border border-gray-800 rounded-xl px-3 py-2 text-xs text-white step-label">
-                            <input type="url" placeholder="URL da rede social" value="https://youtube.com" class="flex-grow bg-darkbg border border-gray-800 rounded-xl px-3 py-2 text-xs text-white step-url">
+                            <input type="text" placeholder="Nome da tarefa" value="Inscreva-se no Canal" class="flex-grow bg-darkbg border border-gray-800 rounded-xl px-3 py-2 text-xs text-white step-label">
+                            <input type="url" placeholder="URL" value="https://youtube.com" class="flex-grow bg-darkbg border border-gray-800 rounded-xl px-3 py-2 text-xs text-white step-url">
                         </div>
                     </div>
                 </div>
@@ -139,7 +158,7 @@
         </div>
     </div>
 
-    <!-- Script de Gestão & Firebase Auth -->
+    <!-- Script de Autenticação Google & Gestão Firebase -->
     <script>
         const firebaseConfig = {
             databaseURL: "https://nooxsub-default-rtdb.firebaseio.com/"
@@ -148,27 +167,44 @@
         const db = firebase.database();
         const auth = firebase.auth();
 
+        const loginCard = document.getElementById('loginCard');
+        const dashboardContent = document.getElementById('dashboardContent');
+        const userHeaderInfo = document.getElementById('userHeaderInfo');
         const userEmailEl = document.getElementById('userEmail');
         const linksListEl = document.getElementById('linksList');
         const createModal = document.getElementById('createModal');
 
-        // Autenticação Anônima ou Google (Se não logado, loga anônimo automaticamente)
-        auth.signInAnonymously().catch(error => {
-            console.error("Erro auth:", error);
-        });
-
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                userEmailEl.textContent = user.isAnonymous ? "Modo Anônimo (Conectado)" : user.email;
-                loadUserLinks(user.uid);
-            }
-        });
+        // Função de Login com Google (Popup)
+        function loginWithGoogle() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider).catch(error => {
+                console.error("Erro no login:", error);
+                alert("Erro ao autenticar com Google: " + error.message);
+            });
+        }
 
         function logout() {
             auth.signOut().then(() => {
                 window.location.reload();
             });
         }
+
+        // Monitorar Estado da Autenticação
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                // Usuário Logado com Google
+                loginCard.classList.add('hidden');
+                dashboardContent.classList.remove('hidden');
+                userHeaderInfo.classList.remove('hidden');
+                userEmailEl.textContent = user.email || user.displayName || "Conta Google";
+                loadUserLinks(user.uid);
+            } else {
+                // Deslogado
+                loginCard.classList.remove('hidden');
+                dashboardContent.classList.add('hidden');
+                userHeaderInfo.classList.add('hidden');
+            }
+        });
 
         function openCreateModal() { createModal.classList.remove('hidden'); }
         function closeCreateModal() { createModal.classList.add('hidden'); }
@@ -204,18 +240,17 @@
             container.appendChild(div);
         }
 
-        // Criar Link
+        // Criar Link Vinculado ao UID do Usuário Logado
         document.getElementById('createLinkForm').addEventListener('submit', function(e) {
             e.preventDefault();
             const user = auth.currentUser;
-            if (!user) return alert('Faça login primeiro.');
+            if (!user) return alert('Você precisa estar logado com o Google.');
 
             const title = document.getElementById('linkTitleInput').value;
             const description = document.getElementById('linkDescInput').value;
             const targetUrl = document.getElementById('linkTargetInput').value;
             const avatar = document.getElementById('linkAvatarInput').value || 'https://via.placeholder.com/150';
 
-            // Coletar Etapas
             const steps = [];
             document.querySelectorAll('.step-row').forEach(row => {
                 steps.push({
@@ -225,9 +260,10 @@
                 });
             });
 
-            const linkId = 'link_' + Math.random().toString(36.substring(2, 9));
+            const linkId = 'link_' + Math.random().toString(36).substring(2, 9);
             const linkData = {
                 owner: user.uid,
+                ownerEmail: user.email,
                 title,
                 description,
                 targetUrl,
@@ -239,13 +275,14 @@
 
             db.ref(`links/${linkId}`).set(linkData).then(() => {
                 closeCreateModal();
-                loadUserLinks(user.uid);
-                alert('Link criado com sucesso!');
+                document.getElementById('createLinkForm').reset();
+                alert('Link criado e salvo com sucesso!');
             }).catch(err => {
                 alert('Erro ao criar link: ' + err.message);
             });
         });
 
+        // Carregar Apenas os Links do Usuário Atual (Privacidade por UID)
         function loadUserLinks(uid) {
             db.ref('links').orderByChild('owner').equalTo(uid).on('value', snapshot => {
                 const data = snapshot.val();
