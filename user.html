@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NooxSub - Painel do Criador</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkbg: '#09090b',
+                        cardbg: '#121215',
+                        primary: '#b91c1c',
+                        primaryHover: '#991b1b',
+                        accent: '#dc2626'
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+</head>
+<body class="bg-darkbg text-gray-100 min-h-screen flex flex-col font-sans">
+
+    <!-- Header -->
+    <header class="w-full py-4 px-6 border-b border-gray-800 bg-cardbg/80 backdrop-blur sticky top-0 z-50 flex justify-between items-center">
+        <div class="flex items-center space-x-3">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-red-900 flex items-center justify-center shadow-lg shadow-red-900/30">
+                <i class="fa-solid fa-gauge-high text-white text-sm"></i>
+            </div>
+            <span class="text-xl font-bold tracking-wide text-white">Noox<span class="text-primary">Sub</span> <span class="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded ml-2">Painel</span></span>
+        </div>
+        <div class="flex items-center space-x-3">
+            <span id="userEmail" class="text-xs text-gray-400 hidden sm:inline">Conectado</span>
+            <button onclick="logout()" class="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-xs text-red-400 font-semibold transition">
+                <i class="fa-solid fa-right-from-bracket mr-1"></i> Sair
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-5xl w-full mx-auto p-4 sm:p-6 space-y-6">
+        
+        <!-- Alerta / Boas-vindas -->
+        <div class="bg-cardbg border border-gray-800 rounded-2xl p-6 shadow-xl relative overflow-hidden flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="space-y-1">
+                <h1 class="text-xl font-bold text-white">Gerenciador de Links & Campanhas</h1>
+                <p class="text-sm text-gray-400">Crie links de sub-unlock profissionais e impulsione suas redes sociais.</p>
+            </div>
+            <button onclick="openCreateModal()" class="px-5 py-3 rounded-xl bg-primary hover:bg-primaryHover text-white font-bold text-sm transition shadow-lg shadow-red-900/30 flex items-center space-x-2">
+                <i class="fa-solid fa-plus"></i>
+                <span>Criar Novo Link</span>
+            </button>
+        </div>
+
+        <!-- Lista de Links do Usuário -->
+        <div class="bg-cardbg border border-gray-800 rounded-2xl p-6 shadow-xl space-y-4">
+            <h2 class="text-lg font-bold text-white flex items-center">
+                <i class="fa-solid fa-link text-primary mr-2"></i> Seus Links Criados
+            </h2>
+            <div id="linksList" class="space-y-3">
+                <!-- Links injetados via JS -->
+                <p class="text-sm text-gray-500 text-center py-8">Carregando seus links...</p>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modal de Criação de Link -->
+    <div id="createModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-cardbg border border-gray-800 w-full max-w-lg rounded-2xl p-6 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b border-gray-800 pb-3">
+                <h3 class="text-lg font-bold text-white">Criar Novo Link de Sub-Unlock</h3>
+                <button onclick="closeCreateModal()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <form id="createLinkForm" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-400 mb-1">Título do Conteúdo / Arquivo</label>
+                    <input type="text" id="linkTitleInput" required placeholder="Ex: Pack de Modificações Free Fire v3" class="w-full bg-darkbg border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-primary">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-400 mb-1">Descrição</label>
+                    <input type="text" id="linkDescInput" placeholder="Ex: Siga as etapas abaixo para liberar o link direto." class="w-full bg-darkbg border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-primary">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-400 mb-1">URL de Destino Final (Download / Arquivo)</label>
+                    <input type="url" id="linkTargetInput" required placeholder="Ex: https://www.mediafire.com/file/..." class="w-full bg-darkbg border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-primary">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-400 mb-1">Foto de Perfil / Capa (URL da Imagem ou Selecione)</label>
+                    <div class="flex gap-2">
+                        <input type="url" id="linkAvatarInput" placeholder="https://exemplo.com/foto.png" class="flex-grow bg-darkbg border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-primary">
+                        <input type="file" id="avatarFile" accept="image/*" class="hidden" onchange="handleImageUpload(event)">
+                        <button type="button" onclick="document.getElementById('avatarFile').click()" class="px-4 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-xs font-semibold text-white transition">
+                            <i class="fa-solid fa-image"></i> Galeria
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Configuração de Etapas -->
+                <div class="space-y-2 border-t border-gray-800 pt-3">
+                    <div class="flex justify-between items-center">
+                        <label class="text-xs font-semibold text-gray-300">Etapas / Redes Sociais Obrigatórias</label>
+                        <button type="button" onclick="addStepField()" class="text-xs text-primary font-bold hover:underline">+ Adicionar Etapa</button>
+                    </div>
+                    <div id="stepsInputsContainer" class="space-y-2">
+                        <!-- Etapa Padrão 1 (YouTube) -->
+                        <div class="flex gap-2 step-row">
+                            <select class="bg-darkbg border border-gray-800 rounded-xl px-2 py-2 text-xs text-white step-type">
+                                <option value="youtube">YouTube</option>
+                                <option value="discord">Discord</option>
+                                <option value="telegram">Telegram</option>
+                                <option value="whatsapp">WhatsApp</option>
+                                <option value="instagram">Instagram</option>
+                                <option value="x">X (Twitter)</option>
+                            </select>
+                            <input type="text" placeholder="Nome da tarefa (Inscreva-se)" value="Inscreva-se no Canal" class="flex-grow bg-darkbg border border-gray-800 rounded-xl px-3 py-2 text-xs text-white step-label">
+                            <input type="url" placeholder="URL da rede social" value="https://youtube.com" class="flex-grow bg-darkbg border border-gray-800 rounded-xl px-3 py-2 text-xs text-white step-url">
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full py-3 rounded-xl bg-primary hover:bg-primaryHover text-white font-bold text-sm transition shadow-lg shadow-red-900/30 mt-4">
+                    Salvar & Gerar Link
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Script de Gestão & Firebase Auth -->
+    <script>
+        const firebaseConfig = {
+            databaseURL: "https://nooxsub-default-rtdb.firebaseio.com/"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const auth = firebase.auth();
+
+        const userEmailEl = document.getElementById('userEmail');
+        const linksListEl = document.getElementById('linksList');
+        const createModal = document.getElementById('createModal');
+
+        // Autenticação Anônima ou Google (Se não logado, loga anônimo automaticamente)
+        auth.signInAnonymously().catch(error => {
+            console.error("Erro auth:", error);
+        });
+
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                userEmailEl.textContent = user.isAnonymous ? "Modo Anônimo (Conectado)" : user.email;
+                loadUserLinks(user.uid);
+            }
+        });
+
+        function logout() {
+            auth.signOut().then(() => {
+                window.location.reload();
+            });
+        }
+
+        function openCreateModal() { createModal.classList.remove('hidden'); }
+        function closeCreateModal() { createModal.classList.add('hidden'); }
+
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('linkAvatarInput').value = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function addStepField() {
+            const container = document.getElementById('stepsInputsContainer');
+            const div = document.createElement('div');
+            div.className = 'flex gap-2 step-row';
+            div.innerHTML = `
+                <select class="bg-darkbg border border-gray-800 rounded-xl px-2 py-2 text-xs text-white step-type">
+                    <option value="youtube">YouTube</option>
+                    <option value="discord">Discord</option>
+                    <option value="telegram">Telegram</option>
+                    <option value="whatsapp">WhatsApp</option>
+                    <option value="instagram">Instagram</option>
+                    <option value="x">X (Twitter)</option>
+                </select>
+                <input type="text" placeholder="Nome da tarefa" value="Entrar no Grupo" class="flex-grow bg-darkbg border border-gray-800 rounded-xl px-3 py-2 text-xs text-white step-label">
+                <input type="url" placeholder="URL" value="https://" class="flex-grow bg-darkbg border border-gray-800 rounded-xl px-3 py-2 text-xs text-white step-url">
+                <button type="button" onclick="this.parentElement.remove()" class="px-2 text-red-500 hover:text-red-400"><i class="fa-solid fa-trash"></i></button>
+            `;
+            container.appendChild(div);
+        }
+
+        // Criar Link
+        document.getElementById('createLinkForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const user = auth.currentUser;
+            if (!user) return alert('Faça login primeiro.');
+
+            const title = document.getElementById('linkTitleInput').value;
+            const description = document.getElementById('linkDescInput').value;
+            const targetUrl = document.getElementById('linkTargetInput').value;
+            const avatar = document.getElementById('linkAvatarInput').value || 'https://via.placeholder.com/150';
+
+            // Coletar Etapas
+            const steps = [];
+            document.querySelectorAll('.step-row').forEach(row => {
+                steps.push({
+                    type: row.querySelector('.step-type').value,
+                    label: row.querySelector('.step-label').value,
+                    url: row.querySelector('.step-url').value
+                });
+            });
+
+            const linkId = 'link_' + Math.random().toString(36.substring(2, 9));
+            const linkData = {
+                owner: user.uid,
+                title,
+                description,
+                targetUrl,
+                avatar,
+                steps,
+                createdAt: Date.now(),
+                stats: { visits: 0, downloads: 0 }
+            };
+
+            db.ref(`links/${linkId}`).set(linkData).then(() => {
+                closeCreateModal();
+                loadUserLinks(user.uid);
+                alert('Link criado com sucesso!');
+            }).catch(err => {
+                alert('Erro ao criar link: ' + err.message);
+            });
+        });
+
+        function loadUserLinks(uid) {
+            db.ref('links').orderByChild('owner').equalTo(uid).on('value', snapshot => {
+                const data = snapshot.val();
+                linksListEl.innerHTML = '';
+                if (!data) {
+                    linksListEl.innerHTML = '<p class="text-sm text-gray-500 text-center py-6">Você ainda não criou nenhum link.</p>';
+                    return;
+                }
+
+                Object.keys(data).forEach(id => {
+                    const link = data[id];
+                    const visits = link.stats?.visits || 0;
+                    const downloads = link.stats?.downloads || 0;
+                    const fullLinkUrl = `${window.location.origin}/inicio.html?id=${id}`;
+
+                    const item = document.createElement('div');
+                    item.className = 'p-4 rounded-xl border border-gray-800 bg-darkbg/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4';
+                    item.innerHTML = `
+                        <div class="flex items-center space-x-3 overflow-hidden">
+                            <img src="${link.avatar}" class="w-12 h-12 rounded-lg object-cover border border-primary flex-shrink-0">
+                            <div class="truncate">
+                                <h3 class="text-sm font-bold text-white truncate">${link.title}</h3>
+                                <p class="text-xs text-gray-400 truncate">${fullLinkUrl}</p>
+                                <div class="flex gap-3 mt-1 text-xs text-gray-400">
+                                    <span><i class="fa-solid fa-eye text-primary mr-1"></i> ${visits}</span>
+                                    <span><i class="fa-solid fa-download text-primary mr-1"></i> ${downloads}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2 flex-shrink-0">
+                            <button onclick="navigator.clipboard.writeText('${fullLinkUrl}'); alert('Link copiado!');" class="px-3 py-1.5 rounded-lg bg-primary hover:bg-primaryHover text-xs font-bold text-white transition">
+                                <i class="fa-solid fa-copy mr-1"></i> Copiar
+                            </button>
+                            <button onclick="deleteLink('${id}')" class="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-red-900/50 text-xs font-bold text-red-400 transition">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    `;
+                    linksListEl.appendChild(item);
+                });
+            });
+        }
+
+        window.deleteLink = function(id) {
+            if (confirm('Deseja realmente excluir este link?')) {
+                db.ref(`links/${id}`).remove();
+            }
+        };
+    </script>
+</body>
+</html>
